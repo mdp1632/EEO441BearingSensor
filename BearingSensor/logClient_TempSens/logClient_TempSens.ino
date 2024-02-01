@@ -22,13 +22,16 @@ painlessMesh  mesh;
 
 // Prototype
 void receivedCallback( uint32_t from, String &msg );
+// void onNodeTimeAdjusted(int32_t offset);
+void nodeTimeAdjustedCallback(int32_t offset); 
 float getAmbientTemp();
 float getBearingTemp();
 
 size_t logServerId = 0;
 
 // Send message to the logServer every 10 seconds 
-Task myLoggingTask(10000, TASK_FOREVER, []() {  // Time should be set based on time of last time sync+delay
+Task myLoggingTask(10000, TASK_FOREVER, []() {  
+    WiFi.setSleep(false); // Wake up. Turn on Wi-Fi Radio
 #if ARDUINOJSON_VERSION_MAJOR==6
         DynamicJsonDocument jsonBuffer(1024);
         JsonObject msg = jsonBuffer.to<JsonObject>();
@@ -62,6 +65,8 @@ Task myLoggingTask(10000, TASK_FOREVER, []() {  // Time should be set based on t
     msg.printTo(Serial);
 #endif
     Serial.printf("\n");
+
+    WiFi.setSleep(true); // Sleep - disable modem
 });
 
 void setup() {
@@ -71,6 +76,8 @@ void setup() {
 
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
   mesh.onReceive(&receivedCallback);
+  
+
   //WiFi.setTxPower(WIFI_POWER_MINUS_1dBm); //Lowest Power
 
 
@@ -82,8 +89,10 @@ void setup() {
 void loop() {
   // it will run the user scheduler as well
   mesh.update();
-  mesh.
+  mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
+
 }
+
 
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("logClient: Received from %u msg=%s\n", from, msg.c_str());
@@ -113,7 +122,17 @@ void receivedCallback( uint32_t from, String &msg ) {
 
 
 
-//Check math on both of these!!!
+void nodeTimeAdjustedCallback(int32_t offset){ 
+//Disable and re-enable logging messaging when node time syncs 
+//This should effectively restart the timer on the delay between messages (I think)
+  if(!myLoggingTask.isEnabled()){
+    myLoggingTask.disable();
+  }
+  myLoggingTask.enable();
+}
+
+
+//Check math on both temp functions!!!
 
 float getAmbientTemp(){
   float ambientPinVoltage = map(analogRead(AMBIENT_TEMP_PIN),0,4095,0,3.3);
@@ -127,4 +146,9 @@ float getBearingTemp(){
   float bearingTemp = (bearingPinVoltage-1.25)/0.005;
   return bearingTemp;
 }
+
+int nodeTime_ms(){
+  int ms_nodeTime = mesh.getNodeTime()*1000;
+  return ms_nodeTime; //return node time in milliseconds rather than microseconds
+} 
 
