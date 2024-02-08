@@ -25,7 +25,6 @@ boolean enabledLastState = false;
 boolean enabledCurrentState = false;
 boolean meshEnabled = true;
 
-
 Scheduler     userScheduler; // to control your personal task
 painlessMesh  mesh;
 
@@ -34,6 +33,7 @@ void receivedCallback( uint32_t from, String &msg );
 void nodeTimeAdjustedCallback(int32_t offset); 
 float getAmbientTemp();
 float getBearingTemp();
+
 
 size_t logServerId = 0;
 
@@ -48,8 +48,7 @@ Task LoggingTask(5000, TASK_FOREVER, []() {
   DynamicJsonBuffer jsonBuffer;
   JsonObject& msg = jsonBuffer.createObject();
 #endif
-  
-//Serial.printf("DOING SOMETHING\n"); 
+
 // Prepare Message
 msg["topic"] = "sensor";
 msg["ambient"] = getAmbientTemp();
@@ -58,7 +57,6 @@ msg["car num"] = carNum;
 msg["location"] = carLocation;
 msg["status"] = bearingStatus;
 msg["time"] = mesh.getNodeTime();
-msg["node id"] = mesh.getNodeId();
 
 String str;
 
@@ -68,98 +66,37 @@ String str;
 	msg.printTo(str);
 #endif
 
-  if(enableMessage){
-    enableMessage = false; 
+if (logServerId == 0) // If we don't know the logServer yet
+    mesh.sendBroadcast(str);
+else
+    mesh.sendSingle(logServerId, str);
 
-    Serial.printf("Turning On WiFi\n");
-    //Enable Wifi. Inititialize Mesh
-    WiFi.setSleep(false);
-    delay(50);
-    //mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
- 
-    // TRANSMISSION!!! 
-    Serial.printf("Transmitting Message. From: %i\n", mesh.getNodeId());
-    if (logServerId == 0) // If we don't know the logServer yet, send as broadcast
-      mesh.sendBroadcast(str);
-    else{
-      mesh.sendSingle(logServerId, str);
-    }     
-  
-  lastUpdateTime = mesh.getNodeTime()/1000;  //Reset Timer (nodeTime_ms not in scope - use getNodeTime()/1000)
-  }
-
-  Serial.printf("Turning Off WiFi\n");
-  //Stop mesh. Disable WiFi.
-  //mesh.stop();
-  delay(50);
-  WiFi.setSleep(true);
-
-	// log to serial
+    // log to serial
 #if ARDUINOJSON_VERSION_MAJOR==6
-	serializeJson(msg, Serial);
+    serializeJson(msg, Serial);
 #else
-	msg.printTo(Serial);
+    msg.printTo(Serial);
 #endif
-
-	Serial.printf("\n");
-
-	//WiFi.setSleep(true); // Sleep - disable modem
+    Serial.printf("\n");
 });
 
 void setup() {
   Serial.begin(115200);
-	
+    
   mesh.setDebugMsgTypes( ERROR | STARTUP | CONNECTION );  // set before init() so that you can see startup messages
 
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
   mesh.onReceive(&receivedCallback);
-  
-
-  //WiFi.setTxPower(WIFI_POWER_MINUS_1dBm); //Lowest Power
-
 
   // Add the task to the your scheduler
   userScheduler.addTask(LoggingTask);
-  LoggingTask.enable(); //Enable and disable this in loop() based on time since last time sync?
+  LoggingTask.enable();
 }
 
 void loop() {
   // it will run the user scheduler as well
-  if(meshEnabled){
-    mesh.update();        // May interfere with WiFi/Mesh shutdown???
-    mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
-  }
-  // mesh.update();        // May interfere with WiFi/Mesh shutdown???
-  // mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
-
-	enabledLastState = enableMessage; 
-
-  if(nodeTime_ms() > lastUpdateTime + transmitDelay){
-    enableMessage = true;
-    meshEnabled = true;
-  }
-  else{
-	  enableMessage = false;
-  }
-
-  enabledCurrentState = enableMessage;
-
-
-  if(enabledCurrentState != enabledLastState){
-	  Serial.printf("Transmission Enabled?  %i .... %i....Diff: %i\n",enableMessage, nodeTime_ms(),(nodeTime_ms()-lastUpdateTime));  // Print State if changed
-    if (enableMessage){
-      meshEnabled = true;
-      //LoggingTask.enable();
-    }
-    else{
-      meshEnabled = false;
-      //LoggingTask.disable();
-    }
-  }
-
-
+  mesh.update();
 }
-
 
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("logClient: Received from %u msg=%s\n", from, msg.c_str());
@@ -188,21 +125,6 @@ void receivedCallback( uint32_t from, String &msg ) {
 }
 
 
-//original nodeTimeAdjustedCallback()
-/*
-void nodeTimeAdjustedCallback(int32_t offset){ 
-//Disable and re-enable logging messaging when node time syncs 
-//This should effectively restart the timer on the delay between messages (I think)
-  Serial.printf("TiMe AdJuSteD!\n");
-
-  if(!LoggingTask.isEnabled()){
-    //LoggingTask.disable();
-    // Serial.println("Disabled MyLoggingTask");
-  }
-  LoggingTask.enable();
-      //Serial.println("Enabled MyLoggingTask");
-} */
-
 void nodeTimeAdjustedCallback(int32_t offset){ 
   // Reset timer variable
   lastUpdateTime = nodeTime_ms();
@@ -230,6 +152,4 @@ float getBearingTemp(){
   float bearingTemp = (bearingPinVoltage-1.25)/0.005;
   return bearingTemp;
 }
-
-
 
