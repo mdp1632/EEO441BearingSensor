@@ -19,10 +19,11 @@ String    bearingStatus = "Normal";
 
 // Initialize Mesh Timer and Status variables
 int lastUpdateTime = 0;
+int wakeTime = 80000;
 int transmitDelay = 15000;
 boolean enableMessage = true;
-boolean enabledLastState = false;
-boolean enabledCurrentState = false;
+boolean enabledLastState = true;
+boolean enabledCurrentState = true;
 boolean meshEnabled = true;
 
 Scheduler     userScheduler; // to control your personal task
@@ -31,6 +32,8 @@ painlessMesh  mesh;
 // Prototypes
 void receivedCallback( uint32_t from, String &msg );
 void nodeTimeAdjustedCallback(int32_t offset); 
+int nodeTime_ms();
+void radioEnable(boolean enabled);
 float getAmbientTemp();
 float getBearingTemp();
 
@@ -39,8 +42,8 @@ size_t logServerId = 0;
 
 // Send message to the logServer every 5 seconds 
 Task LoggingTask(5000, TASK_FOREVER, []() {  
+lastUpdateTime = nodeTime_ms();  
   
-	//WiFi.setSleep(false); // Wake up. Turn on Wi-Fi Radio
 #if ARDUINOJSON_VERSION_MAJOR==6
   DynamicJsonDocument jsonBuffer(1024);
   JsonObject msg = jsonBuffer.to<JsonObject>();
@@ -66,11 +69,23 @@ String str;
 	msg.printTo(str);
 #endif
 
-if (logServerId == 0) // If we don't know the logServer yet
+// New Implementation
+if(enableMessage){
+  if (logServerId == 0) {// send message as broadcast in case log server is not connected yet
+      mesh.sendBroadcast(str);
+      Serial.printf("Sending Message...\n");
+  }
+  else{
+      mesh.sendSingle(logServerId, str);
+  }
+}
+//Old Implementation
+/*
+if (logServerId == 0) // send message as broadcast in case log server is not connected yet
     mesh.sendBroadcast(str);
 else
     mesh.sendSingle(logServerId, str);
-
+*/
     // log to serial
 #if ARDUINOJSON_VERSION_MAJOR==6
     serializeJson(msg, Serial);
@@ -95,7 +110,50 @@ void setup() {
 
 void loop() {
   // it will run the user scheduler as well
+  // mesh.update();
+if(meshEnabled){
   mesh.update();
+}
+
+//Figure out how to keep awake for a few seconds before shutting down WiFi
+if(nodeTime_ms() < lastUpdateTime + wakeTime){
+  meshEnabled = true;
+}
+else{
+  if(nodeTime_ms() > lastUpdateTime + transmitDelay){
+    meshEnabled = true;
+  }
+  else{
+    meshEnabled = false;
+  }
+}
+
+/*
+if(nodeTime_ms() > lastUpdateTime + transmitDelay){
+  meshEnabled = true;
+}
+else{
+  meshEnabled = false;
+}
+*/
+enabledCurrentState = meshEnabled;
+enabledLastState = enabledCurrentState;
+
+//If state has changed
+if(enabledCurrentState != enabledLastState){
+  if(meshEnabled){
+    //turn on wifi 
+    //Maybe start initialize mesh if it has been stopped before disabling Wifi (try running setup() to init?)
+    radioEnable(true);
+  }
+  else{
+    //turn off wifi 
+    //maybe stop mesh first if turning off wifi without it is problematic
+    radioEnable(false);
+  }
+}
+
+
 }
 
 void receivedCallback( uint32_t from, String &msg ) {
@@ -131,15 +189,25 @@ void nodeTimeAdjustedCallback(int32_t offset){
   Serial.printf("!!!!!!!!!!!!!!!!!!!!!!TIME ADJUSTED!!!!!!!!!!!!!!!!!!!!!\n");
 }
 
-
 int nodeTime_ms(){
   // int ms_nodeTime = mesh.getNodeTime()*1000;
   int ms_nodeTime = mesh.getNodeTime()/1000;
   return ms_nodeTime; //return node time in milliseconds rather than microseconds
 } 
 
-//Check math on both temp functions!!!
+void radioEnable(boolean enabled){
+  if(enabled){
+    // WiFi.setSleep(false);
+    Serial.printf("Enabling Radio\n");
+  }
+  else{
+    // WiFi.setSleep(true);
+    Serial.printf("Disabling Radio\n");
+  }
+}
 
+
+//Check math on both temp functions!!!
 float getAmbientTemp(){
   float ambientPinVoltage = map(analogRead(AMBIENT_TEMP_PIN),0,4095,0,3.3);
   float ambientTemp = ((ambientPinVoltage/1000) - 500) / 10;
