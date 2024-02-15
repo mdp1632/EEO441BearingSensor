@@ -8,6 +8,7 @@
 #define   MESH_PREFIX     "whateverYouLike"
 #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT       5555
+#define   WIFI_CHANNEL    6
 
 #define   AMBIENT_TEMP_PIN  33
 #define   BEARING_TEMP_PIN  32
@@ -19,10 +20,15 @@ String    bearingStatus = "Normal";
 
 // Initialize Mesh Timer and Status variables
 int lastUpdateTime = 0;
-int wakeTime = 80000;
-int transmitDelay = 15000;
-boolean enableMessage = true;
-boolean enabledLastState = true;
+// int wakeTime = 80000;
+// int transmitDelay = 15000;
+
+int wakeUpTime = 30000;
+int startSleepTime = 5000;
+boolean messageSent = false;
+
+boolean messageEnabled = true;
+boolean enabledLastState = false; 
 boolean enabledCurrentState = true;
 boolean meshEnabled = true;
 
@@ -33,6 +39,7 @@ painlessMesh  mesh;
 void receivedCallback( uint32_t from, String &msg );
 void nodeTimeAdjustedCallback(int32_t offset); 
 int nodeTime_ms();
+int nodeTime_relative();
 void radioEnable(boolean enabled);
 float getAmbientTemp();
 float getBearingTemp();
@@ -41,7 +48,7 @@ float getBearingTemp();
 size_t logServerId = 0;
 
 // Send message to the logServer every 5 seconds 
-Task LoggingTask(5000, TASK_FOREVER, []() {  
+Task LoggingTask(30000, TASK_FOREVER, []() {  
 lastUpdateTime = nodeTime_ms();  
   
 #if ARDUINOJSON_VERSION_MAJOR==6
@@ -69,16 +76,18 @@ String str;
 	msg.printTo(str);
 #endif
 
-// New Implementation
-if(enableMessage){
-  if (logServerId == 0) {// send message as broadcast in case log server is not connected yet
+// New Implementation - for testing
+if(messageEnabled){
+  Serial.printf("Sending Message...\n");
+  if (logServerId == 0) {     // send message as broadcast in case log server is not connected yet
       mesh.sendBroadcast(str);
-      Serial.printf("Sending Message...\n");
   }
   else{
       mesh.sendSingle(logServerId, str);
+      messageSent = true;   // Only goes true if message is sent to log server, not just broadcast to all nodes
   }
 }
+
 //Old Implementation
 /*
 if (logServerId == 0) // send message as broadcast in case log server is not connected yet
@@ -100,7 +109,7 @@ void setup() {
     
   mesh.setDebugMsgTypes( ERROR | STARTUP | CONNECTION );  // set before init() so that you can see startup messages
 
-  mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
+  mesh.init(MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, WIFI_CHANNEL);
   mesh.onReceive(&receivedCallback);
 
   // Add the task to the your scheduler
@@ -111,48 +120,87 @@ void setup() {
 void loop() {
   // it will run the user scheduler as well
   // mesh.update();
-if(meshEnabled){
-  mesh.update();
-}
+  // Serial.print(nodeTime_relative());
 
-//Figure out how to keep awake for a few seconds before shutting down WiFi
-if(nodeTime_ms() < lastUpdateTime + wakeTime){
-  meshEnabled = true;
-}
-else{
+  if(meshEnabled){
+    mesh.update();
+  }
+
+  // messageSent = true;  //For Testing
+
+  if(nodeTime_relative() < startSleepTime){
+    if(!messageSent){
+      // Keep Enabled until message is sent
+      messageEnabled = true; 
+      meshEnabled = true;
+    }
+    else{
+      // Leave mesh enabled while other nodes transmit
+      messageEnabled = false;
+      meshEnabled = true;
+    }
+  }
+  else{
+    if(nodeTime_relative() < wakeUpTime){
+      // Leave everything disabled 
+      messageEnabled = false;
+      meshEnabled = false;
+    }
+    else{   //nodeTime_relative() > wakeUpTime
+      messageEnabled = true;
+      meshEnabled = true;
+      messageSent = false;  // Reset so message is sent next time
+    }
+  }
+
+
+  //Figure out how to keep awake for a few seconds before shutting down WiFi
+  /*if(nodeTime_ms() < lastUpdateTime + wakeTime){
+    meshEnabled = true;
+  }
+  else{
+    if(nodeTime_ms() > lastUpdateTime + transmitDelay){
+      meshEnabled = true;
+      enableMessage = true;
+    }
+    else{
+      meshEnabled = false;
+      enableMessage = false;
+    }
+  }
+  */
+
+  /*
   if(nodeTime_ms() > lastUpdateTime + transmitDelay){
     meshEnabled = true;
   }
   else{
     meshEnabled = false;
   }
-}
+  */
 
-/*
-if(nodeTime_ms() > lastUpdateTime + transmitDelay){
-  meshEnabled = true;
-}
-else{
-  meshEnabled = false;
-}
-*/
-enabledCurrentState = meshEnabled;
-enabledLastState = enabledCurrentState;
 
-//If state has changed
-if(enabledCurrentState != enabledLastState){
-  if(meshEnabled){
-    //turn on wifi 
-    //Maybe start initialize mesh if it has been stopped before disabling Wifi (try running setup() to init?)
-    radioEnable(true);
+  //If state has changed
+  if(enabledCurrentState != enabledLastState){
+    if(meshEnabled){
+      //turn on wifi 
+      //Maybe start initialize mesh if it has been stopped before disabling Wifi (try running setup() to init?)
+      radioEnable(true);
+    }
+    else{
+      //turn off wifi 
+      //maybe stop mesh first if turning off wifi without it is problematic
+      radioEnable(false);
+    }
   }
-  else{
-    //turn off wifi 
-    //maybe stop mesh first if turning off wifi without it is problematic
-    radioEnable(false);
-  }
-}
+  
+    
+  enabledLastState = enabledCurrentState;
+  enabledCurrentState = meshEnabled;
+  
 
+  Serial.printf("Time: %i,  Messaged Enabled: %i, Mesh Enabled: %i \n", nodeTime_relative(), messageEnabled, meshEnabled);
+  // Serial.printf("Time: %i \n", nodeTime_relative());
 
 }
 
@@ -186,22 +234,31 @@ void receivedCallback( uint32_t from, String &msg ) {
 void nodeTimeAdjustedCallback(int32_t offset){ 
   // Reset timer variable
   lastUpdateTime = nodeTime_ms();
+  messageSent = false;  // Reset messageSent flag to enable for next iteration
   Serial.printf("!!!!!!!!!!!!!!!!!!!!!!TIME ADJUSTED!!!!!!!!!!!!!!!!!!!!!\n");
 }
 
 int nodeTime_ms(){
-  // int ms_nodeTime = mesh.getNodeTime()*1000;
   int ms_nodeTime = mesh.getNodeTime()/1000;
   return ms_nodeTime; //return node time in milliseconds rather than microseconds
 } 
 
+int nodeTime_relative(){
+  // returns time relative to last updated time
+  int relativeTime = nodeTime_ms() - lastUpdateTime;
+  return relativeTime;
+}
+
 void radioEnable(boolean enabled){
   if(enabled){
     // WiFi.setSleep(false);
+    WiFi.begin();
     Serial.printf("Enabling Radio\n");
   }
   else{
     // WiFi.setSleep(true);
+    WiFi.mode(WIFI_OFF);
+    
     Serial.printf("Disabling Radio\n");
   }
 }
