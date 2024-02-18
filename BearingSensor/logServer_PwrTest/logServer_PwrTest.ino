@@ -53,7 +53,7 @@ void setup() {
   mesh.setDebugMsgTypes( ERROR | CONNECTION | S_TIME );  // set before init() so that you can see startup messages
 
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
-  WiFi.setTxPower(WIFI_POWER_MINUS_1dBm);
+  //WiFi.setTxPower(WIFI_POWER_MINUS_1dBm);
  
   mesh.onReceive(&receivedCallback);
 
