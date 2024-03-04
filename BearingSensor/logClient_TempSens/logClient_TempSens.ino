@@ -1,5 +1,5 @@
 //************************************************************
-// this is a simple example that uses the painlessMesh library to 
+// this *was* a simple example that uses the painlessMesh library to 
 // setup a node that logs to a central logging node
 // The logServer example shows how to configure the central logging nodes
 //************************************************************
@@ -268,15 +268,21 @@ void radioEnable(boolean enabled){
 
 //Check math on both temp functions!!!
 float getAmbientTemp(){
-  float ambientPinVoltage = map(analogRead(AMBIENT_TEMP_PIN),0,4095,0,3.3);
+  float tempOffset = 0; // For calibration
+  // float ambientPinVoltage = map(analogRead(AMBIENT_TEMP_PIN),0,4095,0,3.3);
+  float ambientPinVoltage = analogRead(AMBIENT_TEMP_PIN)*(3.3/4096);
   float ambientTemp = ((ambientPinVoltage/1000) - 500) / 10;
-  //return ambientTemp;
-  return analogRead(AMBIENT_TEMP_PIN);  //For testing
+  ambientTemp = ambientTemp + tempOffset;
+  return ambientTemp;
+  // return analogRead(AMBIENT_TEMP_PIN);  //For testing
 }
 
 float getBearingTemp(){
+  float tempOffset = 30;  // For Calibration
   float bearingPinVoltage = (3.3/4095)*analogRead(BEARING_TEMP_PIN);
   float bearingTemp = (bearingPinVoltage-1.25)/0.005;
+  bearingTemp = bearingTemp + tempOffset;
+  
   return bearingTemp;
 }
 
