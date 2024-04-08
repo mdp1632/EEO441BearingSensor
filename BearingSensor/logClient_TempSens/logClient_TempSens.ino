@@ -266,15 +266,14 @@ void radioEnable(boolean enabled){
 }
 
 
-//Check math on both temp functions!!!
 float getAmbientTemp(){
   float tempOffset = 0; // For calibration
-  // float ambientPinVoltage = map(analogRead(AMBIENT_TEMP_PIN),0,4095,0,3.3);
-  float ambientPinVoltage = analogRead(AMBIENT_TEMP_PIN)*(3.3/4096);
-  float ambientTemp = ((ambientPinVoltage/1000) - 500) / 10;
+  float ambientPinVoltage = analogRead(AMBIENT_TEMP_PIN);
+  
+  ambientPinVoltage = ambientPinVoltage/1023;
+  float ambientTemp = ((ambientPinVoltage - 0.5) * 100);
   ambientTemp = ambientTemp + tempOffset;
   return ambientTemp;
-  // return analogRead(AMBIENT_TEMP_PIN);  //For testing
 }
 
 float getBearingTemp(){
