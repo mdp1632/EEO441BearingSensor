@@ -18,6 +18,9 @@ int       carNum = 0;               // Number in consist/Road Number/Serial Numb
 String    carLocation = "BR";       // AL, AR, BL, BR
 String    bearingStatus = "Normal";
 
+// Set Safety Thresholds - Temperatures in °C.
+float overTempThreshold = 200; 
+
 // Initialize Mesh Timer and Status variables
 int lastUpdateTime = 0;
 // int wakeTime = 80000;
@@ -46,6 +49,9 @@ uint32_t nodeTime_relative();
 void radioEnable(boolean enabled);
 float getAmbientTemp();
 float getBearingTemp();
+boolean isOverTemp();
+boolean vibrationsUnsafe();
+String updateBearingStatus();
 
 //FOR TESTING...MAYBE?
 void SendMessageToServer();
@@ -202,6 +208,8 @@ void loop() {
   // Serial.printf("Time: %i,  Messaged Enabled: %i, Mesh Enabled: %i \n", nodeTime_relative(), messageEnabled, meshEnabled);
   // Serial.printf("Time: %i \n", nodeTime_relative());
 
+  updateBearingStatus();  // Check temp and vibrations for bearing safety status
+
 }
 
 void receivedCallback( uint32_t from, String &msg ) {
@@ -236,7 +244,7 @@ void nodeTimeAdjustedCallback(int32_t offset){
   lastUpdateTime = nodeTime_ms();
   // messageSent = false;  // Reset messageSent flag to enable for next iteration
   messageSent = 0;
-  Serial.printf("!!!!!!!!!!!!!!!!!!!!!!TIME ADJUSTED!!!!!!!!!!!!!!!!!!!!!\n");
+  Serial.printf("!!!!!!!!!!!!!!!!!!!!!!TIME ADJUSTED!!!!!!!!!!!!!!!!!!!!!\n"); //For testing
 }
 
 uint32_t nodeTime_ms(){
@@ -283,6 +291,42 @@ float getBearingTemp(){
   bearingTemp = bearingTemp + tempOffset;
   
   return bearingTemp;
+}
+
+boolean isOverTemp(){
+  return getBearingTemp() > overTempThreshold;
+}
+
+boolean vibrationsUnsafe(){
+  // Implement some kind of vibration analysis 
+  return false;
+}
+
+String updateBearingStatus(){
+  int overTempCount = 0;
+
+  if(isOverTemp()){
+    overTempCount = 0;
+
+    for(int i = 0; i < 8; i++){  // Check multiple times to ensure overtemp condition is not the result of noise 
+      if(isOverTemp()){
+        overTempCount += 1;
+      }
+    }
+  }
+
+  if(overTempCount > 5){        // If bearing was overtemp more than 5 times 
+    bearingStatus = "Warning";
+  }
+  else{
+    if(vibrationsUnsafe()){
+      bearingStatus = "Warning";
+    }
+    else{
+      bearingStatus = "Normal";
+    }
+  }
+
 }
 
 
