@@ -4,14 +4,18 @@
 // The logServer example shows how to configure the central logging nodes
 //************************************************************
 #include "painlessMesh.h"
+#include "arduinoFFT.h" 
 
-#define   MESH_PREFIX     "whateverYouLike"
-#define   MESH_PASSWORD   "somethingSneaky"
-#define   MESH_PORT       5555
-#define   WIFI_CHANNEL    6
+#define   MESH_PREFIX       "whateverYouLike" // "BearingMesh"
+#define   MESH_PASSWORD     "somethingSneaky" // "EEO441"
+#define   MESH_PORT         5555
+#define   WIFI_CHANNEL      6
 
 #define   AMBIENT_TEMP_PIN  33
 #define   BEARING_TEMP_PIN  32
+#define   PIEZO_PIN         35
+
+#define   SCL_FREQUENCY     0x02
 
 // Initialize Bearing Variables
 int       carNum = 0;               // Number in consist/Road Number/Serial Number (TBD)
@@ -36,8 +40,25 @@ boolean enabledLastState = false;
 boolean enabledCurrentState = true;
 boolean meshEnabled = true;
 
-Scheduler     userScheduler; // to control your personal task
-painlessMesh  mesh;
+Scheduler     userScheduler; // painlessMesh task scheduler
+painlessMesh  mesh;          // Create Mesh object
+
+
+// Initialize FFT Variables, Objects
+const uint16_t samples = 1024;    //Must be a power of 2
+const uint16_t samplingFrequency = 8192;
+// Input/output vectors
+float vReal[samples];
+float vImag[samples];
+
+//Sorted array of peak values
+int peakMagnitudeArray[samples/2];  // Make oversized 
+int peakFrequencyArray[samples/2];
+
+int magnitudeArray[samples];
+int frequencyArray[samples];
+
+ArduinoFFT<float> FFT = ArduinoFFT<float>(vReal, vImag, samples, samplingFrequency); // Create FFT Object
 
 // Prototypes
 void receivedCallback( uint32_t from, String &msg );
@@ -52,6 +73,8 @@ float getBearingTemp();
 boolean isOverTemp();
 boolean vibrationsUnsafe();
 String updateBearingStatus();
+
+
 
 //FOR TESTING...MAYBE?
 void SendMessageToServer();
