@@ -45,8 +45,11 @@ painlessMesh  mesh;          // Create Mesh object
 
 
 // Initialize FFT Variables, Objects
-const uint16_t samples = 1024;    //Must be a power of 2
+const uint16_t samples = 1024;            //Must be a power of 2
 const uint16_t samplingFrequency = 8192;
+unsigned int sampling_period_us = round(1000000*(1.0/samplingFrequency));
+unsigned long microseconds;
+
 // Input/output vectors
 float vReal[samples];
 float vImag[samples];
@@ -60,7 +63,7 @@ int frequencyArray[samples];
 
 ArduinoFFT<float> FFT = ArduinoFFT<float>(vReal, vImag, samples, samplingFrequency); // Create FFT Object
 
-// Prototypes
+// Function Prototypes
 void receivedCallback( uint32_t from, String &msg );
 void nodeTimeAdjustedCallback(int32_t offset); 
 // void newConnectionCallback(uint32_t nodeId);
@@ -73,6 +76,14 @@ float getBearingTemp();
 boolean isOverTemp();
 boolean vibrationsUnsafe();
 String updateBearingStatus();
+
+// FFT Function Prototypes
+void recordSamples();
+void generateSortedPeakArrays();
+void MakeArrayFromVector(float *vData, uint16_t bufferSize, uint8_t scaleType);
+void sortArraysDescending(int peakMagnitudeArray[], int peakFrequencyArray[], int n);
+int generatePeakArrays(int magArray[], int freqArray[], int peakMagnitudeArray[], int peakFreqencyArray[], int magArrSize);
+
 
 
 
@@ -351,6 +362,11 @@ String updateBearingStatus(){
   }
 
 }
+
+
+
+
+
 
 
 void SendMessageToServer(){    
