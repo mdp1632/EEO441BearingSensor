@@ -50,6 +50,10 @@ const uint16_t samplingFrequency = 8192;
 unsigned int sampling_period_us = round(1000000*(1.0/samplingFrequency));
 unsigned long microseconds;
 
+int safetyThresholdMagnitude = 1000;  // Magnitude, Frequency Thresholds
+int threshold_LF = 18;
+int threshold_HF = 50;
+
 // Input/output vectors
 float vReal[samples];
 float vImag[samples];
@@ -79,11 +83,13 @@ String updateBearingStatus();
 
 // FFT Function Prototypes
 void recordSamples();
+void recordAndSortSamples();
+void printN_Frequencies(int n);
 void generateSortedPeakArrays();
 void MakeArrayFromVector(float *vData, uint16_t bufferSize, uint8_t scaleType);
 void sortArraysDescending(int peakMagnitudeArray[], int peakFrequencyArray[], int n);
 int generatePeakArrays(int magArray[], int freqArray[], int peakMagnitudeArray[], int peakFreqencyArray[], int magArrSize);
-
+boolean topN_frequencyUnsafe(int topN, int thresholdMagnitude, int frequencyLow, int frequencyHigh);
 
 
 
@@ -332,9 +338,113 @@ boolean isOverTemp(){
 }
 
 boolean vibrationsUnsafe(){
-  // Implement some kind of vibration analysis 
-  return false;
+  boolean vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
+  return vibeUnsafe;
 }
+
+void recordAndSortSamples(){
+  recordSamples();
+
+  FFT.windowing(FFTWindow::Hamming, FFTDirection::Forward);	//Weigh data
+  FFT.compute(FFTDirection::Forward);   // Compute FFT
+  FFT.complexToMagnitude();             // Compute magnitudes
+
+  generateSortedPeakArrays();
+}
+
+boolean topN_frequencyUnsafe(int topN, int thresholdMagnitude, int frequencyLow, int frequencyHigh){
+  
+  for(int i=0; i < topN; i++){
+    if(peakMagnitudeArray[i] > thresholdMagnitude){
+      if(peakFrequencyArray[i] > frequencyLow && peakFrequencyArray[i] < frequencyHigh){
+        return true;
+      }
+    }
+  }
+  return false;
+
+}
+
+void printN_Frequencies(int n){
+  Serial.printf("Magnitude, Frequency \n");   
+    for (int i = 0; i < n; i++) {
+        Serial.printf("%d , %d \n", peakMagnitudeArray[i], peakFrequencyArray[i]);
+    }
+}
+
+void recordSamples(){
+  microseconds = micros();
+  for(int i=0; i<samples; i++)
+    {
+        vReal[i] = analogRead(PIEZO_PIN);
+        vImag[i] = 0;
+       while(micros() - microseconds < sampling_period_us){
+          //empty loop
+        }
+        microseconds += sampling_period_us;
+    }
+}
+
+void generateSortedPeakArrays(){
+  
+  MakeArrayFromVector(vReal, (samples >> 1), SCL_FREQUENCY);
+  int numPeaks = generatePeakArrays(magnitudeArray, frequencyArray, peakMagnitudeArray, peakFrequencyArray,(samples/2));  //Generate peak array and store size of peak arrays
+  sortArraysDescending(peakMagnitudeArray, peakFrequencyArray,numPeaks);
+
+  /*
+  // Print Sorted Arrays - For Testing 
+  Serial.printf("Sorted Magnitude Array (Descending):\n");
+  for (int i = 0; i < numPeaks; i++) {
+    Serial.printf("%d , %d \n", peakMagnitudeArray[i], peakFrequencyArray[i]);
+  } 
+  */
+}
+
+void MakeArrayFromVector(float *vData, uint16_t bufferSize, uint8_t scaleType)
+{
+  for (uint16_t i = 0; i < bufferSize; i++)
+  {
+    float freq;
+     freq = ((i * 1.0 * samplingFrequency) / samples);
+    frequencyArray[i] = freq;
+    magnitudeArray[i] = vData[i];
+  }
+  Serial.println();
+}
+
+void sortArraysDescending(int peakMagnitudeArray[], int peakFrequencyArray[], int n) {
+    int i, j, tempMag, tempFreq;
+    for (i = 1; i < n; i++) {
+        tempMag = peakMagnitudeArray[i];
+        tempFreq = peakFrequencyArray[i];
+        j = i - 1;
+        
+        while ((j >= 0) && (peakMagnitudeArray[j] < tempMag)) {
+            peakMagnitudeArray[j + 1] = peakMagnitudeArray[j];
+            peakFrequencyArray[j + 1] = peakFrequencyArray[j];
+            j = j - 1;
+        }
+        peakMagnitudeArray[j + 1] = tempMag;
+        peakFrequencyArray[j + 1] = tempFreq;
+    }
+}
+
+int generatePeakArrays(int magArray[], int freqArray[], int peakMagnitudeArray[], int peakFreqencyArray[], int magArrSize){ // Move peaks into peak arrays
+  int p=0;
+
+  for (int i = 1; i < magArrSize; i++) {
+    if((magArray[i] > magArray[i-1]) && (magArray[i] > magArray[i+1])){
+      // i is a peak
+      peakMagnitudeArray[p] = magArray[i];
+      peakFrequencyArray[p] = freqArray[i];
+    
+      p++;    
+    }
+  }
+  return p; // Number of peaks (# elements in peak arrays)
+}
+
+
 
 String updateBearingStatus(){
   int overTempCount = 0;
@@ -362,11 +472,6 @@ String updateBearingStatus(){
   }
 
 }
-
-
-
-
-
 
 
 void SendMessageToServer(){    
