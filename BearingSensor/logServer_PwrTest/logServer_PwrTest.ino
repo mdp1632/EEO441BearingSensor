@@ -78,3 +78,15 @@ void loop() {
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
 }
+
+
+// Received Message format
+/*
+msg["topic"] = "sensor";            // 
+msg["ambient"] = getAmbientTemp();  // float
+msg["bearing"] = getBearingTemp();  // float
+msg["car num"] = carNum;            // int
+msg["location"] = carLocation;      // String
+msg["status"] = bearingStatus;      // String
+msg["time"] = mesh.getNodeTime();   // uint32_t
+*/

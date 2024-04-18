@@ -49,9 +49,11 @@ const uint16_t samples = 1024;            //Must be a power of 2
 const uint16_t samplingFrequency = 8192;
 unsigned int sampling_period_us = round(1000000*(1.0/samplingFrequency));
 unsigned long microseconds;
+unsigned long lastMilliseconds;
+unsigned long currentMilliseconds;
 
-int safetyThresholdMagnitude = 1000;  // Magnitude, Frequency Thresholds
-int threshold_LF = 18;
+int safetyThresholdMagnitude = 1000;  // Magnitude, Frequency Thresholds 
+int threshold_LF = 18;                // (Magnitudes are unitless, Frequencies in Hz)
 int threshold_HF = 50;
 
 // Input/output vectors
@@ -170,13 +172,15 @@ void setup() {
   // LoggingTask.enable();
   // LoggingTask.disable();
 
-  randomSeed(mesh.getNodeId()); // Initialize seed for frequency RNG using node ID.
+  randomSeed(mesh.getNodeId()); // Initialize seed for logging frequency RNG using node ID.
 }
 
 void loop() {
   // it will run the user scheduler as well
   // mesh.update();
   // Serial.print(nodeTime_relative());
+
+  currentMilliseconds = millis(); // Update timer for FFT and non-mesh-related tasks
 
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
 
@@ -362,7 +366,6 @@ boolean topN_frequencyUnsafe(int topN, int thresholdMagnitude, int frequencyLow,
     }
   }
   return false;
-
 }
 
 void printN_Frequencies(int n){
@@ -374,8 +377,7 @@ void printN_Frequencies(int n){
 
 void recordSamples(){
   microseconds = micros();
-  for(int i=0; i<samples; i++)
-    {
+  for(int i=0; i<samples; i++){
         vReal[i] = analogRead(PIEZO_PIN);
         vImag[i] = 0;
        while(micros() - microseconds < sampling_period_us){
