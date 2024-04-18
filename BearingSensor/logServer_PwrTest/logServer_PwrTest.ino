@@ -1,8 +1,6 @@
 //************************************************************
-// this is a simple example that uses the painlessMesh library to 
+// this *was* a simple example that uses the painlessMesh library to 
 // setup a single node (this node) as a logging node
-// The logClient example shows how to configure the other nodes
-// to log to this server
 //************************************************************
 #include "painlessMesh.h"
 

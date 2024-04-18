@@ -1,7 +1,6 @@
 //************************************************************
 // this *was* a simple example that uses the painlessMesh library to 
 // setup a node that logs to a central logging node
-// The logServer example shows how to configure the central logging nodes
 //************************************************************
 #include "painlessMesh.h"
 #include "arduinoFFT.h" 
@@ -21,6 +20,7 @@
 int       carNum = 0;               // Number in consist/Road Number/Serial Number (TBD)
 String    carLocation = "BR";       // AL, AR, BL, BR
 String    bearingStatus = "Normal";
+boolean   vibrationsSafe = true;
 
 // Set Safety Thresholds - Temperatures in °C.
 float overTempThreshold = 200; 
@@ -49,8 +49,8 @@ const uint16_t samples = 1024;            //Must be a power of 2
 const uint16_t samplingFrequency = 8192;
 unsigned int sampling_period_us = round(1000000*(1.0/samplingFrequency));
 unsigned long microseconds;
-unsigned long lastMilliseconds;
-unsigned long currentMilliseconds;
+unsigned long lastMilliseconds_FFT_Sample = 0;
+unsigned long currentMilliseconds = 0;
 
 int safetyThresholdMagnitude = 1000;  // Magnitude, Frequency Thresholds 
 int threshold_LF = 18;                // (Magnitudes are unitless, Frequencies in Hz)
@@ -94,8 +94,7 @@ int generatePeakArrays(int magArray[], int freqArray[], int peakMagnitudeArray[]
 boolean topN_frequencyUnsafe(int topN, int thresholdMagnitude, int frequencyLow, int frequencyHigh);
 
 
-
-//FOR TESTING...MAYBE?
+//FOR TESTING...maybe?
 void SendMessageToServer();
 
 
@@ -172,7 +171,8 @@ void setup() {
   // LoggingTask.enable();
   // LoggingTask.disable();
 
-  randomSeed(mesh.getNodeId()); // Initialize seed for logging frequency RNG using node ID.
+  randomSeed(mesh.getNodeId()); // Initialize seed for logging frequency RNG using node ID
+                                // Random logging frequency helps to prevent concurrent messages/interference
 }
 
 void loop() {
@@ -188,11 +188,11 @@ void loop() {
     mesh.update();
   }
 
-  // messageSent = true;  //For Testing
+  // messageSent = true;  // For Testing
 
   if(nodeTime_relative() < startSleepTime){
     //if(!messageSent){
-    if(messageSent<2){ //Send 2 times and hope message is received. (Could be changed to send until Server sends ack.)
+    if(messageSent<2){ // Send 2 times and hope message is received. (Could be changed to send until Server sends ack.)
 
       // Keep Enabled until message is sent
       messageEnabled = true; 
@@ -204,7 +204,7 @@ void loop() {
       meshEnabled = true;
     }
     // Just keep scanning, just keep scanning, scanning, scanning...
-    if(true){ //Extra if statement for ease of testing
+    if(true){ // Extra if statement for ease of testing
       if(mesh.getNodeList().size()<2){  // Reset time if no other nodes (other than server) are detected
         lastUpdateTime = nodeTime_ms(); // (wait until at least two nodes are seen)
       }
@@ -226,7 +226,7 @@ void loop() {
   }
 
 
-  //If state has changed
+  // If state has changed
   if(enabledCurrentState != enabledLastState){
     if(meshEnabled){
       //turn on wifi 
@@ -343,6 +343,21 @@ boolean isOverTemp(){
 
 boolean vibrationsUnsafe(){
   boolean vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
+  return vibeUnsafe;
+}
+
+boolean vibrationsUnsafePeriodic(){
+  int recordDelay = 3000;         // Time to wait before recording another set of samples
+  // currentMilliseconds time is updated in main loop
+  boolean vibeUnsafe = !vibrationsSafe;
+
+  if(currentMilliseconds > lastMilliseconds_FFT_Sample + recordDelay){
+      vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
+  }
+  
+  vibrationsSafe = !vibeUnsafe; // Update global vibrationsSafe variable
+
+  lastMilliseconds_FFT_Sample = currentMilliseconds;
   return vibeUnsafe;
 }
 
