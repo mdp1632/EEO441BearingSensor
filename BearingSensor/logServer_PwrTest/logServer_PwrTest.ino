@@ -75,7 +75,22 @@ void loop() {
 
 void receivedCallback( uint32_t from, String &msg ) {
   Serial.printf("logServer: Received from %u msg=%s\n", from, msg.c_str());
+  
+  DynamicJsonDocument currentCar(1024);
+  deserializeJson(currentCar,msg);
+
+  if(currentCar["status"] == "Warning"){
+    float bearingTemp = currentCar["ambient"];
+    float ambientTemp = currentCar["bearing"];
+    int carNum = currentCar["carNum"];
+    String location = currentCar["location"];
+    String bearingStatus = currentCar["status"];
+
+
+    Serial.printf("Warning: Car #: %i , %S", carNum, location);
+  }
 }
+
 
 
 // Received Message format

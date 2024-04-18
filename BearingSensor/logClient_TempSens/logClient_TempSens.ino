@@ -346,7 +346,7 @@ boolean vibrationsUnsafe(){
   return vibeUnsafe;
 }
 
-boolean vibrationsUnsafePeriodic(){
+boolean vibrationsUnsafePeriodic(){   // Could add loop to check frequencies a few times to avoid false positives/negatives
   int recordDelay = 3000;         // Time to wait before recording another set of samples
   // currentMilliseconds time is updated in main loop
   boolean vibeUnsafe = !vibrationsSafe;
@@ -480,7 +480,7 @@ String updateBearingStatus(){
     bearingStatus = "Warning";
   }
   else{
-    if(vibrationsUnsafe()){
+    if(vibrationsUnsafePeriodic()){
       bearingStatus = "Warning";
     }
     else{
