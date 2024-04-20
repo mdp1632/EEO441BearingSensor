@@ -79,15 +79,19 @@ void receivedCallback( uint32_t from, String &msg ) {
   DynamicJsonDocument currentCar(1024);
   deserializeJson(currentCar,msg);
 
-  if(currentCar["status"] == "Warning"){
+  // Get info from node
     float bearingTemp = currentCar["ambient"];
     float ambientTemp = currentCar["bearing"];
     int carNum = currentCar["carNum"];
     String location = currentCar["location"];
     String bearingStatus = currentCar["status"];
 
-
+  if(currentCar["status"] == "Warning"){
     Serial.printf("Warning: Car #: %i , %S", carNum, location);
+  }
+  else{ // For Testing...
+    Serial.printf("Normal - Car #: %i , %S ,\n Bearing Temp: %f ,\n Ambient Temp: %f \n\n", carNum, location, bearingTemp, ambientTemp);
+
   }
 }
 

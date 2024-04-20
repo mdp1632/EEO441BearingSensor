@@ -23,14 +23,14 @@ String    bearingStatus = "Normal";
 boolean   vibrationsSafe = true;
 
 // Set Safety Thresholds - Temperatures in °C.
-float overTempThreshold = 200; 
+float overTempThreshold = 77; // ~170°F
 
 // Initialize Mesh Timer and Status variables
 int lastUpdateTime = 0;
 // int wakeTime = 80000;
 // int transmitDelay = 15000;
 
-int wakeUpTime = 60000;
+int wakeUpTime = 45000;//60000;
 int startSleepTime = 15000;
 // boolean messageSent = false;
 int messageSent = 0;
@@ -77,11 +77,12 @@ void nodeTimeAdjustedCallback(int32_t offset);
 uint32_t nodeTime_ms();
 uint32_t nodeTime_relative();
 void radioEnable(boolean enabled);
+void updateBearingStatus();
 float getAmbientTemp();
 float getBearingTemp();
 boolean isOverTemp();
 boolean vibrationsUnsafe();
-String updateBearingStatus();
+
 
 // FFT Function Prototypes
 void recordSamples();
@@ -176,7 +177,7 @@ void setup() {
 }
 
 void loop() {
-  // it will run the user scheduler as well
+  // it will run the user scheduler as well 
   // mesh.update();
   // Serial.print(nodeTime_relative());
 
@@ -462,21 +463,36 @@ int generatePeakArrays(int magArray[], int freqArray[], int peakMagnitudeArray[]
 }
 
 
+// void updateBearingStatus(){
 
-String updateBearingStatus(){
+//   if(isOverTemp()){        
+//     bearingStatus = "Warning";
+//   }
+//   else{
+//     bearingStatus = "Normal";
+//     // if(vibrationsUnsafePeriodic()){
+//     //   bearingStatus = "Warning";
+//     // }
+//     // else{
+//     //   bearingStatus = "Normal";
+//     // }
+//   }
+
+// }
+
+void updateBearingStatus(){
   int overTempCount = 0;
 
   if(isOverTemp()){
     overTempCount = 0;
 
-    for(int i = 0; i < 8; i++){  // Check multiple times to ensure overtemp condition is not the result of noise 
+    for(int i = 0; i < 3; i++){  // Check multiple times to ensure overtemp condition is not the result of noise 
       if(isOverTemp()){
         overTempCount += 1;
       }
     }
   }
-
-  if(overTempCount > 5){        // If bearing was overtemp more than 5 times 
+  if(overTempCount > 2){        // If bearing was overtemp more than 2 times 
     bearingStatus = "Warning";
   }
   else{

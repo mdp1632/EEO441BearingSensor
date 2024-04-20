@@ -3,5 +3,6 @@
     "board": "esp32:esp32:esp32da",
     "sketch": "BearingSensor\\logClient_TempSens\\logClient_TempSens.ino",
     "output": "../build",
-    "port": "COM7"
+    "port": "COM3",
+    "programmer": "esptool"
 }
