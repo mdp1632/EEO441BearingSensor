@@ -80,18 +80,24 @@ void receivedCallback( uint32_t from, String &msg ) {
   deserializeJson(currentCar,msg);
 
   // Get info from node
-    float bearingTemp = currentCar["ambient"];
-    float ambientTemp = currentCar["bearing"];
+    float bearingTemp = currentCar["bearing"];
+    float ambientTemp = currentCar["ambient"];
     int carNum = currentCar["carNum"];
     String location = currentCar["location"];
     String bearingStatus = currentCar["status"];
 
   if(currentCar["status"] == "Warning"){
-    Serial.printf("Warning: Car #: %i , %S", carNum, location);
+    Serial.printf("!!!WARNING!!!\n");
+    Serial.printf("Warning - Car #: %i, %S\n", carNum, location);
+    Serial.printf("Details - Car #: %i, %S,\n Bearing Temp: %f ,\n Ambient Temp: %f \n\n", carNum, location, bearingTemp, ambientTemp);
   }
-  else{ // For Testing...
-    Serial.printf("Normal - Car #: %i , %S ,\n Bearing Temp: %f ,\n Ambient Temp: %f \n\n", carNum, location, bearingTemp, ambientTemp);
-
+  else{ 
+    if(currentCar["status"] == "Normal"){
+      Serial.printf("Normal - Car #: %i, %S,\n Bearing Temp: %f ,\n Ambient Temp: %f \n\n", carNum, location, bearingTemp, ambientTemp); 
+    }
+    else{
+      Serial.printf("!ERROR! - Car #: %i, %S,\n Bearing Temp: %f ,\n Ambient Temp: %f \n\n", carNum, location, bearingTemp, ambientTemp); // Catch any errors in incorrect status setting
+    }
   }
 }
 

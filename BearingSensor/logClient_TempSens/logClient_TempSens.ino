@@ -30,7 +30,7 @@ int lastUpdateTime = 0;
 // int wakeTime = 80000;
 // int transmitDelay = 15000;
 
-int wakeUpTime = 45000;//60000;
+int wakeUpTime = 30000;//60000;
 int startSleepTime = 15000;
 // boolean messageSent = false;
 int messageSent = 0;
@@ -49,8 +49,10 @@ const uint16_t samples = 1024;            //Must be a power of 2
 const uint16_t samplingFrequency = 8192;
 unsigned int sampling_period_us = round(1000000*(1.0/samplingFrequency));
 unsigned long microseconds;
-unsigned long lastMilliseconds_FFT_Sample = 0;
 unsigned long currentMilliseconds = 0;
+unsigned long lastMilliseconds_FFT_Sample = 0;
+unsigned long lastUnsafeVibeTime_ms = 0;  
+boolean vibesWereBad = false;
 
 int safetyThresholdMagnitude = 1000;  // Magnitude, Frequency Thresholds 
 int threshold_LF = 18;                // (Magnitudes are unitless, Frequencies in Hz)
@@ -347,15 +349,71 @@ boolean vibrationsUnsafe(){
   return vibeUnsafe;
 }
 
+// boolean vibrationsUnsafePeriodic(){   // Could add loop to check frequencies a few times to avoid false positives/negatives
+//   int recordDelay = 3000;         // Time to wait before recording another set of samples
+//   // currentMilliseconds time is updated in main loop
+//   boolean vibeUnsafe = !vibrationsSafe; // Initialize vibeUnsafe based on current status of globabl variable 
+
+//   if(currentMilliseconds > lastMilliseconds_FFT_Sample + recordDelay){
+//       vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
+//   }
+  
+//   vibrationsSafe = !vibeUnsafe; // Update global vibrationsSafe variable
+
+//   lastMilliseconds_FFT_Sample = currentMilliseconds;
+//   return vibeUnsafe;
+// }
+
 boolean vibrationsUnsafePeriodic(){   // Could add loop to check frequencies a few times to avoid false positives/negatives
-  int recordDelay = 3000;         // Time to wait before recording another set of samples
-  // currentMilliseconds time is updated in main loop
-  boolean vibeUnsafe = !vibrationsSafe;
+  int unsafeVibeCount = 0;
+  int recordDelay = 3000;                 // Time to wait before recording another set of samples
+  int unsafeVibeStickyTime = wakeUpTime;  // Time to "remember" last confirmed unsafe vibration event
+  // Remembering the unsafe event for the length of time before wake-up helps avoid failed reporting of unsafe vibrations
+                                          // currentMilliseconds time is updated in main loop
+  boolean vibeUnsafe = !vibrationsSafe;   // Initialize vibeUnsafe based on current status of globabl variable 
+
 
   if(currentMilliseconds > lastMilliseconds_FFT_Sample + recordDelay){
-      vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
+    vibeUnsafe = topN_frequencyUnsafe(20, safetyThresholdMagnitude, threshold_LF,threshold_HF); // Check if Top 20 Frequencies are problems
+    Serial.printf("vibeUnsafe: %i \n",vibeUnsafe);
+    //////////////////////////////////////////////////////////////////////////////////////////
+    if(vibeUnsafe){   // Check multiple times to make sure unsafe vibrations aren't just noise.
+      for(int v = 0; v < 10; v++){
+        vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
+        if(vibeUnsafe){
+          unsafeVibeCount++;
+          Serial.printf("Unsafe vibecount: %i \n", unsafeVibeCount);
+        }
+      }
+      if(unsafeVibeCount > 5){
+        vibeUnsafe = true;
+      }  
+      else{
+        vibeUnsafe = false;
+      }
+    }
+    ///////////////////////////////////////////////////////////////////////////////////////////
   }
-  
+
+  if(vibeUnsafe){ //Bad vibes...
+    if(vibeUnsafe != !vibrationsSafe){ // vibrationsSafe status has changed since last time
+      lastUnsafeVibeTime_ms = currentMilliseconds;
+      vibesWereBad = true;
+    }
+  }
+  // Why is this problematic?
+  if(currentMilliseconds < lastUnsafeVibeTime_ms + unsafeVibeStickyTime){
+    if(vibesWereBad){
+      vibeUnsafe = true;  // Keep status as unsafe until next tranmission cycle
+      Serial.printf("Setting unsafe vibes...\n");
+    }  
+  } 
+  else{
+    vibesWereBad = false; // reset bad vibes
+  }
+  Serial.printf("last bad vibes: %f,  current millis: %f \n",lastUnsafeVibeTime_ms,currentMilliseconds);
+
+
   vibrationsSafe = !vibeUnsafe; // Update global vibrationsSafe variable
 
   lastMilliseconds_FFT_Sample = currentMilliseconds;
@@ -431,7 +489,10 @@ void MakeArrayFromVector(float *vData, uint16_t bufferSize, uint8_t scaleType)
 }
 
 void sortArraysDescending(int peakMagnitudeArray[], int peakFrequencyArray[], int n) {
-    int i, j, tempMag, tempFreq;
+    int i, j; 
+    int tempMag; 
+    int tempFreq;
+    
     for (i = 1; i < n; i++) {
         tempMag = peakMagnitudeArray[i];
         tempFreq = peakFrequencyArray[i];
@@ -496,14 +557,19 @@ void updateBearingStatus(){
     bearingStatus = "Warning";
   }
   else{
-    if(vibrationsUnsafePeriodic()){
-      bearingStatus = "Warning";
-    }
-    else{
+    // For Testing...
+    Serial.printf("Not Overtemp. vibes safe: %i \n", !vibrationsUnsafePeriodic());
+    //
+    vibrationsUnsafePeriodic();
+    if(vibrationsSafe){
       bearingStatus = "Normal";
     }
+    else{
+      bearingStatus = "Warning";
+    }
   }
-
+///////FOR TESTING
+// bearingStatus = "Normal";
 }
 
 
@@ -517,10 +583,10 @@ void SendMessageToServer(){
 
     // Prepare JSON Message
     msg["topic"] = "sensor";
+    msg["car num"] = carNum;
+    msg["location"] = carLocation;
     msg["ambient"] = getAmbientTemp();
     msg["bearing"] = getBearingTemp();
-    msg["car num"] = carNum; 
-    msg["location"] = carLocation;
     msg["status"] = bearingStatus;
     msg["time"] = mesh.getNodeTime(); 
 
@@ -545,3 +611,7 @@ void SendMessageToServer(){
   }
   
 }
+
+//  To Do:
+//  Add method to toggle or "sticky" "Warning" status until next transmission cycle?
+//  Add visual/audible indicator to server node sketch to trigger upon detection of "Warning" statuses. 
