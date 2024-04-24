@@ -352,83 +352,7 @@ boolean vibrationsUnsafe(){
   return vibeUnsafe;
 }
 
-// boolean vibrationsUnsafePeriodic(){   // Could add loop to check frequencies a few times to avoid false positives/negatives
-//   int recordDelay = 3000;         // Time to wait before recording another set of samples
-//   // currentMilliseconds time is updated in main loop
-//   boolean vibeUnsafe = !vibrationsSafe; // Initialize vibeUnsafe based on current status of globabl variable 
-
-//   if(currentMilliseconds > lastMilliseconds_FFT_Sample + recordDelay){
-//       vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
-//   }
-  
-//   vibrationsSafe = !vibeUnsafe; // Update global vibrationsSafe variable
-
-//   lastMilliseconds_FFT_Sample = currentMilliseconds;
-//   return vibeUnsafe;
-// }
-
-//////////////////////////////
-// boolean vibrationsUnsafePeriodic(){   // Could add loop to check frequencies a few times to avoid false positives/negatives
-//   int unsafeVibeCount = 0;
-//   int recordDelay = 3000;                 // Time to wait before recording another set of samples
-//   int unsafeVibeStickyTime = wakeUpTime;  // Time to "remember" last confirmed unsafe vibration event
-//   // Remembering the unsafe event for the length of time before wake-up helps avoid failed reporting of unsafe vibrations
-//                                           // currentMilliseconds time is updated in main loop
-//   boolean vibeUnsafe = !vibrationsSafe;   // Initialize vibeUnsafe based on current status of globabl variable 
-
-
-//   if(currentMilliseconds > lastMilliseconds_FFT_Sample + recordDelay){
-//     vibeUnsafe = topN_frequencyUnsafe(20, safetyThresholdMagnitude, threshold_LF,threshold_HF); // Check if Top 20 Frequencies are problems
-//     Serial.printf("vibeUnsafe: %i \n",vibeUnsafe);
-//     //////////////////////////////////////////////////////////////////////////////////////////
-//     if(vibeUnsafe){   // Check multiple times to make sure unsafe vibrations aren't just noise.
-//       for(int v = 0; v < 3; v++){
-//         vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
-//         if(vibeUnsafe){
-//           unsafeVibeCount++;
-//           Serial.printf("Unsafe vibecount: %i \n", unsafeVibeCount);
-//         }
-//       }
-//       if(unsafeVibeCount > 2){
-//         vibeUnsafe = true;
-//       }  
-//       else{
-//         vibeUnsafe = false;
-//       }
-//     }
-//     ///////////////////////////////////////////////////////////////////////////////////////////
-//   }
-
-//   if(vibeUnsafe){ //Bad vibes...
-//     if(vibeUnsafe != !vibrationsSafe){ // vibrationsSafe status has changed since last time
-//       lastUnsafeVibeTime_ms = currentMilliseconds;
-//       vibesWereBad = true;
-//     }
-//   }
-//   // Why is this problematic? Is this still a problem?
-//   if(currentMilliseconds < lastUnsafeVibeTime_ms + unsafeVibeStickyTime){
-//     if(vibesWereBad){
-//       vibeUnsafe = true;  // Keep status as unsafe until next tranmission cycle
-//       Serial.printf("Setting unsafe vibes...\n");
-//     }  
-//     else{
-//       vibeUnsafe = false;
-//     }
-//   } 
-//   else{
-//     vibesWereBad = false; // reset bad vibes
-//   }
-//   Serial.printf("last bad vibes: %f,  current millis: %f \n",lastUnsafeVibeTime_ms,currentMilliseconds);
-
-
-//   vibrationsSafe = !vibeUnsafe; // Update global vibrationsSafe variable
-
-//   lastMilliseconds_FFT_Sample = currentMilliseconds;
-//   return vibeUnsafe;
-// }
-//////////////////
-
-// Implementation mostly works. Still has a lot of false positives
+// Implementation mostly works. Still has a some false positives
 boolean vibrationsUnsafePeriodic(){
 	int unsafeVibeCount = 0;
 	unsigned long recordDelay = 3000L;                 // Time to wait before recording another set of samples
@@ -439,14 +363,14 @@ boolean vibrationsUnsafePeriodic(){
 
   Serial.printf("current_ms, %u, last bad vibes: %u", currentMilliseconds,lastUnsafeVibeTime_ms); // TESTING
 
-  unsafeVibeStickyTime = 2000; // For testing 
+  unsafeVibeStickyTime = 2000; // For testing - changes how long last bad vibration will be remembered
 	if(vibesWereBad && (currentMilliseconds < lastUnsafeVibeTime_ms + unsafeVibeStickyTime)){
 		vibeUnsafe = true;
 	}
 	else{
 		if((currentMilliseconds > lastMilliseconds_FFT_Sample + recordDelay) || neverSampled){
       neverSampled = false;
-      
+
       recordAndSortSamples();
 			vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
       if(vibeUnsafe){
