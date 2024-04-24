@@ -95,6 +95,7 @@ void generateSortedPeakArrays();
 void MakeArrayFromVector(float *vData, uint16_t bufferSize, uint8_t scaleType);
 void sortArraysDescending(int peakMagnitudeArray[], int peakFrequencyArray[], int n);
 int generatePeakArrays(int magArray[], int freqArray[], int peakMagnitudeArray[], int peakFreqencyArray[], int magArrSize);
+int topN_frequencyUnsafeTimesCounted(int numTrials, int topN, int thresholdMagnitude, int frequencyLow, int frequencyHigh);
 boolean topN_frequencyUnsafe(int topN, int thresholdMagnitude, int frequencyLow, int frequencyHigh);
 
 
@@ -361,7 +362,7 @@ boolean vibrationsUnsafePeriodic(){
                                           // currentMilliseconds time is updated in main loop
 	boolean vibeUnsafe = !vibrationsSafe;   // Initialize vibeUnsafe based on current status of globabl variable 
 
-  Serial.printf("current_ms, %u, last bad vibes: %u", currentMilliseconds,lastUnsafeVibeTime_ms); // TESTING
+  Serial.printf(" current_ms, %u, last bad vibes: %u", currentMilliseconds,lastUnsafeVibeTime_ms); // TESTING
 
   unsafeVibeStickyTime = 2000; // For testing - changes how long last bad vibration will be remembered
 	if(vibesWereBad && (currentMilliseconds < lastUnsafeVibeTime_ms + unsafeVibeStickyTime)){
@@ -371,8 +372,12 @@ boolean vibrationsUnsafePeriodic(){
 		if((currentMilliseconds > lastMilliseconds_FFT_Sample + recordDelay) || neverSampled){
       neverSampled = false;
 
-      recordAndSortSamples();
-			vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
+      // recordAndSortSamples();
+			// vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
+
+      int numTrials = 30;         //// "Double"-check to reduce false positives from noise
+      vibeUnsafe = (topN_frequencyUnsafeTimesCounted(numTrials,20,safetyThresholdMagnitude, threshold_LF,threshold_HF) > 2); 
+
       if(vibeUnsafe){
         lastUnsafeVibeTime_ms = currentMilliseconds;
       }
@@ -394,6 +399,7 @@ boolean vibrationsUnsafePeriodic(){
 	return vibeUnsafe;
 }
 
+
 void recordAndSortSamples(){
   recordSamples();
 
@@ -402,6 +408,19 @@ void recordAndSortSamples(){
   FFT.complexToMagnitude();             // Compute magnitudes
 
   generateSortedPeakArrays();
+}
+
+
+int topN_frequencyUnsafeTimesCounted(int numTrials, int topN, int thresholdMagnitude, int frequencyLow, int frequencyHigh){
+  int counter = 0;
+
+  for(int i=0; i<numTrials; i++){
+    recordAndSortSamples();
+		if(topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF)){
+      counter++;
+    }
+  }
+  return counter;
 }
 
 boolean topN_frequencyUnsafe(int topN, int thresholdMagnitude, int frequencyLow, int frequencyHigh){
@@ -431,7 +450,6 @@ void recordSamples(){
        while(micros() - microseconds < sampling_period_us){
           //empty loop
           //DELETE NEXT LINE
-          // Serial.print("micros in loop: %f \n"); 
         }
         microseconds += sampling_period_us;
     }
@@ -534,19 +552,20 @@ void updateBearingStatus(){
   }
   else{
     // For Testing...
-   
-    //
     boolean goodVibes = !vibrationsUnsafePeriodic(); 
     // boolean goodVibes = !vibrationsUnsafe(); 
-    Serial.printf("Not Overtemp. vibes safe?: %i \n", goodVibes);
+    Serial.printf("Not Overtemp. vibes safe?: %i  \n", goodVibes);
+    //
     if(goodVibes){ //vibrationsSafe          // and checking global vibrationsSafe variable, ignoring vibrationsUnsafePeriodic() return value
       bearingStatus = "Normal";
     }
     else{
       bearingStatus = "Warning";
     }
-  }
 
+  }
+  // More Testing
+  Serial.printf("Status: %s \n",bearingStatus);
 }
 
 
