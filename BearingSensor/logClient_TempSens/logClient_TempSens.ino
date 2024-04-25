@@ -353,10 +353,10 @@ boolean vibrationsUnsafe(){
   return vibeUnsafe;
 }
 
-// Implementation mostly works. Still has a some false positives
+
 boolean vibrationsUnsafePeriodic(){
 	int unsafeVibeCount = 0;
-	unsigned long recordDelay = 3000L;                 // Time to wait before recording another set of samples
+	unsigned long recordDelay = 3000L;  // Time to wait before recording another set of samples
 	unsigned long unsafeVibeStickyTime = (unsigned long) wakeUpTime;  // Time to "remember" last confirmed unsafe vibration event
 	// Remembering the unsafe event for the length of time before wake-up helps avoid failed reporting of unsafe vibrations
                                           // currentMilliseconds time is updated in main loop
@@ -364,17 +364,18 @@ boolean vibrationsUnsafePeriodic(){
 
   Serial.printf(" current_ms, %u, last bad vibes: %u", currentMilliseconds,lastUnsafeVibeTime_ms); // TESTING
 
-  unsafeVibeStickyTime = 2000; // For testing - changes how long last bad vibration will be remembered
+  unsafeVibeStickyTime = 2000;  // For testing - changes how long last bad vibration will be remembered
+                                // Comment out for default
 	if(vibesWereBad && (currentMilliseconds < lastUnsafeVibeTime_ms + unsafeVibeStickyTime)){
 		vibeUnsafe = true;
 	}
 	else{
 		if((currentMilliseconds > lastMilliseconds_FFT_Sample + recordDelay) || neverSampled){
       neverSampled = false;
-
-      // recordAndSortSamples();
+      // 
+      // recordAndSortSamples();     // No double-checking for noise-rejection
 			// vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
-
+      //
       int numTrials = 30;         //// "Double"-check to reduce false positives from noise
       vibeUnsafe = (topN_frequencyUnsafeTimesCounted(numTrials,20,safetyThresholdMagnitude, threshold_LF,threshold_HF) > 2); 
 
@@ -391,10 +392,8 @@ boolean vibrationsUnsafePeriodic(){
 		}
 	}
 	
-
 	vibrationsSafe = !vibeUnsafe; // Update global vibrationsSafe variable
-
-	lastMilliseconds_FFT_Sample = currentMilliseconds;
+	lastMilliseconds_FFT_Sample = currentMilliseconds;  // Set time to avoid excessive reads
 	
 	return vibeUnsafe;
 }
@@ -423,6 +422,7 @@ int topN_frequencyUnsafeTimesCounted(int numTrials, int topN, int thresholdMagni
   return counter;
 }
 
+
 boolean topN_frequencyUnsafe(int topN, int thresholdMagnitude, int frequencyLow, int frequencyHigh){
   
   for(int i=0; i < topN; i++){
@@ -449,7 +449,6 @@ void recordSamples(){
         vImag[i] = 0;
        while(micros() - microseconds < sampling_period_us){
           //empty loop
-          //DELETE NEXT LINE
         }
         microseconds += sampling_period_us;
     }
@@ -517,9 +516,8 @@ int generatePeakArrays(int magArray[], int freqArray[], int peakMagnitudeArray[]
   return p; // Number of peaks (# elements in peak arrays)
 }
 
-
+// Basic status update without overtemp noise-rejection
 // void updateBearingStatus(){
-
 //   if(isOverTemp()){        
 //     bearingStatus = "Warning";
 //   }
@@ -551,9 +549,8 @@ void updateBearingStatus(){
     bearingStatus = "Warning";
   }
   else{
-    // For Testing...
-    boolean goodVibes = !vibrationsUnsafePeriodic(); 
-    // boolean goodVibes = !vibrationsUnsafe(); 
+    boolean goodVibes = !vibrationsUnsafePeriodic();  // Checks vibrations periodically
+    // boolean goodVibes = !vibrationsUnsafe();       // Checks vibrations every loop
     Serial.printf("Not Overtemp. vibes safe?: %i  \n", goodVibes);
     //
     if(goodVibes){ //vibrationsSafe          // and checking global vibrationsSafe variable, ignoring vibrationsUnsafePeriodic() return value
@@ -609,5 +606,4 @@ void SendMessageToServer(){
 }
 
 //  To Do:
-//  Add method to toggle or "sticky" "Warning" status until next transmission cycle?
 //  Add visual/audible indicator to server node sketch to trigger upon detection of "Warning" statuses. 
