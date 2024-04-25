@@ -572,8 +572,7 @@ void SendMessageToServer(){
 
     DynamicJsonDocument jsonBuffer(1024);
     JsonObject msg = jsonBuffer.to<JsonObject>();
-
-
+    
     // Prepare JSON Message
     msg["topic"] = "sensor";
     msg["car num"] = carNum;
