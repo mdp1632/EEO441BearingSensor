@@ -5,8 +5,8 @@
 #include "painlessMesh.h"
 #include "arduinoFFT.h" 
 
-#define   MESH_PREFIX       "whateverYouLike" // "BearingMesh"
-#define   MESH_PASSWORD     "somethingSneaky" // "EEO441"
+#define   MESH_PREFIX       "BearingMesh" // "SSID"
+#define   MESH_PASSWORD     "EEO441"      // "PWD"
 #define   MESH_PORT         5555
 #define   WIFI_CHANNEL      6
 
@@ -603,6 +603,3 @@ void SendMessageToServer(){
   }
   
 }
-
-//  To Do:
-//  Add visual/audible indicator to server node sketch to trigger upon detection of "Warning" statuses. 

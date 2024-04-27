@@ -4,15 +4,25 @@
 //************************************************************
 #include "painlessMesh.h"
 
-#define   MESH_PREFIX       "whateverYouLike" // "BearingMesh"
-#define   MESH_PASSWORD     "somethingSneaky" // "EEO441"
+#define   MESH_PREFIX       "BearingMesh" // "SSID"
+#define   MESH_PASSWORD     "EEO441"      // "PWD"
 #define   MESH_PORT         5555
+
+#define   LED_PIN           2
+#define   WARNING_RST_PIN   35
 
 Scheduler     userScheduler; // to control your personal task
 painlessMesh  mesh;
-// Prototype
-void receivedCallback( uint32_t from, String &msg );
 
+unsigned long currentMilliseconds = 0;
+unsigned long lastBlinkMilliseconds = 0;
+const long blinkInterval = 500;
+boolean warning = false;
+
+
+// Prototypes
+void receivedCallback( uint32_t from, String &msg );
+void blinkLED();
 
 // Send my ID every 10 seconds to inform others
 Task logServerTask(10000, TASK_FOREVER, []() {
@@ -45,13 +55,16 @@ Task logServerTask(10000, TASK_FOREVER, []() {
 
 void setup() {
   Serial.begin(115200);
+  pinMode(WARNING_RST_PIN,INPUT_PULLUP);
+  pinMode(LED_PIN,OUTPUT);
     
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE | DEBUG ); // all types on
   //mesh.setDebugMsgTypes( ERROR | CONNECTION | SYNC | S_TIME );  // set before init() so that you can see startup messages
   mesh.setDebugMsgTypes( ERROR | CONNECTION | S_TIME );  // set before init() so that you can see startup messages
 
   mesh.init( MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT, WIFI_AP_STA, 6 );
-  //WiFi.setTxPower(WIFI_POWER_MINUS_1dBm);
+  //WiFi.setTxPower(WIFI_POWER_MINUS_1dBm); // Not needed - 
+                                            // little benefit to saving a little power here (server can be powered from train/computer)
  
   mesh.onReceive(&receivedCallback);
 
@@ -69,7 +82,22 @@ void setup() {
 }
 
 void loop() {
-  // it will run the user scheduler as well
+  if(warning){
+    blinkLED(true);
+  }
+  else{
+    blinkLED(false);
+  }
+
+  // Reset Warning status upon button press
+  if(statusResetButton){
+    warning = false;
+  }
+
+
+
+  
+  // Mesh Scheduler will be run as well as loop() code
   mesh.update();
 }
 
@@ -90,6 +118,7 @@ void receivedCallback( uint32_t from, String &msg ) {
     Serial.printf("!!!WARNING!!!\n");
     Serial.printf("Warning - Car #: %i, %S\n", carNum, location);
     Serial.printf("Details - Car #: %i, %S,\n Bearing Temp: %f ,\n Ambient Temp: %f \n\n", carNum, location, bearingTemp, ambientTemp);
+    warning = true; // Store local warning status
   }
   else{ 
     if(currentCar["status"] == "Normal"){
@@ -101,6 +130,32 @@ void receivedCallback( uint32_t from, String &msg ) {
   }
 }
 
+
+void blinkLED(boolean enabled){
+  boolean LED_State = HIGH;
+
+  if(enabled){ 
+    currentMilliseconds = millis();
+
+    if (currentMilliseconds - lastBlinkMilliseconds >= blinkInterval) {
+      lastBlinkMilliseconds = currentMilliseconds;
+    }
+    
+    // Toggle LED State
+    if (LED_State == LOW) {
+      LED_State = HIGH;
+    } else {
+      LED_State = LOW;
+    }
+
+    digitalWrite(LED_PIN,LED_State);
+  }
+
+}
+
+boolean statusResetButton(){    // Held high. Goes true when pin goes low
+  return !digitalRead(WARNING_RST_PIN);
+}
 
 
 // Received Message format
