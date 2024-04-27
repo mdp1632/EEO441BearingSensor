@@ -32,8 +32,8 @@ int lastUpdateTime = 0;
 // int wakeTime = 80000;
 // int transmitDelay = 15000;
 
-int wakeUpTime = 45000;//60000;
-int startSleepTime = 15000;
+int wakeUpTime = 60000; //60000;
+int startSleepTime = 20000; //15000
 // boolean messageSent = false;
 int messageSent = 0;
 
@@ -188,7 +188,6 @@ void loop() {
   // Serial.print(nodeTime_relative());
 
   currentMilliseconds = millis(); // Update timer for FFT and non-mesh-related tasks
-  // currentMilliseconds = micros()*1000; 
 
   mesh.onNodeTimeAdjusted(&nodeTimeAdjustedCallback);
 
@@ -200,7 +199,7 @@ void loop() {
 
   if(nodeTime_relative() < startSleepTime){
     //if(!messageSent){
-    if(messageSent<2){ // Send 2 times and hope message is received. (Could be changed to send until Server sends ack.)
+    if(messageSent<10){ // Send 2 times and hope message is received. (Could be changed to send until Server sends ack.)
 
       // Keep Enabled until message is sent
       messageEnabled = true; 
@@ -213,8 +212,8 @@ void loop() {
     }
     // Just keep scanning, just keep scanning, scanning, scanning...
     if(true){ // Extra if statement for ease of testing
-      if(mesh.getNodeList().size()<2){  // Reset time if no other nodes (other than server) are detected
-        lastUpdateTime = nodeTime_ms(); // (wait until at least two nodes are seen)
+      if(mesh.getNodeList().size()<2){  // (wait until at least 3 nodes are seen)
+        lastUpdateTime = nodeTime_ms(); // Reset time if not enough other nodes (other than server) are detected
       }
     }
   }
@@ -364,7 +363,7 @@ boolean vibrationsUnsafePeriodic(){
                                           // currentMilliseconds time is updated in main loop
 	boolean vibeUnsafe = !vibrationsSafe;   // Initialize vibeUnsafe based on current status of globabl variable 
 
-  Serial.printf(" current_ms, %u, last bad vibes: %u", currentMilliseconds,lastUnsafeVibeTime_ms); // TESTING
+  // Serial.printf(" current_ms, %u, last bad vibes: %u", currentMilliseconds,lastUnsafeVibeTime_ms); // TESTING
 
   unsafeVibeStickyTime = 2000;  // For testing - changes how long last bad vibration will be remembered
                                 // Comment out for default
@@ -378,7 +377,7 @@ boolean vibrationsUnsafePeriodic(){
       // recordAndSortSamples();     // No double-checking for noise-rejection
 			// vibeUnsafe = topN_frequencyUnsafe(20,safetyThresholdMagnitude, threshold_LF,threshold_HF);
       //
-      int numTrials = 30;         //// "Double"-check to reduce false positives from noise
+      int numTrials = 10; //30        //// "Double"-check to reduce false positives from noise
       vibeUnsafe = (topN_frequencyUnsafeTimesCounted(numTrials,20,safetyThresholdMagnitude, threshold_LF,threshold_HF) > 2); 
 
       if(vibeUnsafe){
@@ -555,7 +554,7 @@ void updateBearingStatus(){
     // boolean goodVibes = !vibrationsUnsafe();       // Checks vibrations every loop
     // Serial.printf("Not Overtemp. vibes safe?: %i  \n", goodVibes);
     //
-    if(goodVibes){ //vibrationsSafe          // and checking global vibrationsSafe variable, ignoring vibrationsUnsafePeriodic() return value
+    if(goodVibes){ //vibrationsSafe     // checking global vibrationsSafe variable, ignoring vibrationsUnsafePeriodic() return value
       bearingStatus = "Normal";
     }
     else{
@@ -596,7 +595,7 @@ void SendMessageToServer(){
         mesh.sendSingle(logServerId, str);
         // messageSent = true;   // Only goes true if message is sent to log server, not just broadcast to all nodes
         // messageSent += 1; 
-        // lastUpdateTime = nodeTime_ms();
+        lastUpdateTime = nodeTime_ms(); // // //
     }
     
   messageSent += 1; // Maybe, comment out if using above.

@@ -4,28 +4,27 @@
 //************************************************************
 #include "painlessMesh.h"
 
-#define   MESH_PREFIX       "bearingMesh"    // "SSID"
-#define   MESH_PASSWORD     "railwaySolutions"     // "PWD"
-// #define   MESH_PREFIX     "bearingSensor"
-// #define   MESH_PASSWORD   "somethingSneaky"
+#define   MESH_PREFIX       "bearingMesh"        // "SSID"
+#define   MESH_PASSWORD     "railwaySolutions"   // "PWD"
 #define   MESH_PORT         5555
 #define   WIFI_CHANNEL      6
 
-#define   LED_PIN           2
-#define   WARNING_RST_PIN   35
+#define   LED_PIN           5
+#define   WARNING_RST_PIN   35   
 
-Scheduler     userScheduler; // to control your personal task
+Scheduler     userScheduler;    // to control logging task
 painlessMesh  mesh;
 
 unsigned long currentMilliseconds = 0;
 unsigned long lastBlinkMilliseconds = 0;
 const long blinkInterval = 500;
 boolean warning = false;
+boolean LED_State = HIGH;
 
 
 // Prototypes
 void receivedCallback(uint32_t from, String &msg);
-void blinkLED(boolean enabled);
+// void blinkLED(boolean enabled);
 boolean statusResetButton();
 
 // Send my ID every 10 seconds to inform others
@@ -59,7 +58,8 @@ Task logServerTask(10000, TASK_FOREVER, []() {
 
 void setup() {
   Serial.begin(115200);
-  pinMode(WARNING_RST_PIN,INPUT_PULLUP);
+  // pinMode(WARNING_RST_PIN,INPUT_PULLDOWN);
+  pinMode(WARNING_RST_PIN,INPUT);
   pinMode(LED_PIN,OUTPUT);
     
   //mesh.setDebugMsgTypes( ERROR | MESH_STATUS | CONNECTION | SYNC | COMMUNICATION | GENERAL | MSG_TYPES | REMOTE | DEBUG ); // all types on
@@ -89,17 +89,29 @@ void loop() {
   // Mesh Scheduler will be run as well as loop() code
   mesh.update();
 
+  // if(warning){
+  //   blinkLED(true);
+  // }
+  // else{
+  //   blinkLED(false);
+  // }
+  
   if(warning){
-    blinkLED(true);
+    digitalWrite(LED_PIN,HIGH);
   }
   else{
-    blinkLED(false);
+    digitalWrite(LED_PIN,LOW);
   }
-
+  
   // Reset Warning status upon button press
-  if(statusResetButton){
+  if(statusResetButton()){
     warning = false;
   }
+
+  // if(digitalRead(WARNING_RST_PIN)){
+  //   warning = false;
+  // }
+
   
 }
 
@@ -120,7 +132,8 @@ void receivedCallback( uint32_t from, String &msg ) {
     Serial.printf("!!!WARNING!!!\n");
     Serial.printf("Warning - Car #: %i, %S\n", carNum, location);
     Serial.printf("Details - Car #: %i, %S,\n Bearing Temp: %f ,\n Ambient Temp: %f \n\n", carNum, location, bearingTemp, ambientTemp);
-    warning = true; // Store local warning status
+    warning = true;
+
   }
   else{ 
     if(currentCar["status"] == "Normal"){
@@ -134,8 +147,6 @@ void receivedCallback( uint32_t from, String &msg ) {
 
 
 void blinkLED(boolean enabled){
-  boolean LED_State = HIGH;
-
   if(enabled){ 
     currentMilliseconds = millis();
 
@@ -155,8 +166,8 @@ void blinkLED(boolean enabled){
 
 }
 
-boolean statusResetButton(){    // Held high. Goes true when pin goes low
-  return !digitalRead(WARNING_RST_PIN);
+boolean statusResetButton(){  
+  return digitalRead(WARNING_RST_PIN);
 }
 
 
