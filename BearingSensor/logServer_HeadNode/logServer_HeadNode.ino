@@ -24,8 +24,9 @@ boolean warning = false;
 
 
 // Prototypes
-void receivedCallback( uint32_t from, String &msg );
-void blinkLED();
+void receivedCallback(uint32_t from, String &msg);
+void blinkLED(boolean enabled);
+boolean statusResetButton();
 
 // Send my ID every 10 seconds to inform others
 Task logServerTask(10000, TASK_FOREVER, []() {

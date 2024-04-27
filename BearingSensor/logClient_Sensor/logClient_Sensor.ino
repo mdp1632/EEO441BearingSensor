@@ -553,7 +553,7 @@ void updateBearingStatus(){
   else{
     boolean goodVibes = !vibrationsUnsafePeriodic();  // Checks vibrations periodically
     // boolean goodVibes = !vibrationsUnsafe();       // Checks vibrations every loop
-    Serial.printf("Not Overtemp. vibes safe?: %i  \n", goodVibes);
+    // Serial.printf("Not Overtemp. vibes safe?: %i  \n", goodVibes);
     //
     if(goodVibes){ //vibrationsSafe          // and checking global vibrationsSafe variable, ignoring vibrationsUnsafePeriodic() return value
       bearingStatus = "Normal";
