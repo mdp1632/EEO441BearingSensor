@@ -4,9 +4,12 @@
 //************************************************************
 #include "painlessMesh.h"
 
-#define   MESH_PREFIX       "BearingMesh" // "SSID"
-#define   MESH_PASSWORD     "EEO441"      // "PWD"
+#define   MESH_PREFIX       "bearingMesh"    // "SSID"
+#define   MESH_PASSWORD     "railwaySolutions"     // "PWD"
+// #define   MESH_PREFIX     "bearingSensor"
+// #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT         5555
+#define   WIFI_CHANNEL      6
 
 #define   LED_PIN           2
 #define   WARNING_RST_PIN   35
@@ -82,6 +85,9 @@ void setup() {
 }
 
 void loop() {
+  // Mesh Scheduler will be run as well as loop() code
+  mesh.update();
+
   if(warning){
     blinkLED(true);
   }
@@ -93,12 +99,7 @@ void loop() {
   if(statusResetButton){
     warning = false;
   }
-
-
-
   
-  // Mesh Scheduler will be run as well as loop() code
-  mesh.update();
 }
 
 void receivedCallback( uint32_t from, String &msg ) {

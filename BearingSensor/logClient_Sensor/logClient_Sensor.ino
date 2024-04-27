@@ -5,8 +5,10 @@
 #include "painlessMesh.h"
 #include "arduinoFFT.h" 
 
-#define   MESH_PREFIX       "BearingMesh" // "SSID"
-#define   MESH_PASSWORD     "EEO441"      // "PWD"
+#define   MESH_PREFIX       "bearingMesh"    // "SSID"
+#define   MESH_PASSWORD     "railwaySolutions"     // "PWD"
+// #define   MESH_PREFIX     "bearingSensor"
+// #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT         5555
 #define   WIFI_CHANNEL      6
 
@@ -26,7 +28,7 @@ boolean   vibrationsSafe = true;
 float overTempThreshold = 77; // ~170°F
 
 // Initialize Mesh Timer and Status variables
-int lastUpdateTime = 0;
+int lastUpdateTime = 0; 
 // int wakeTime = 80000;
 // int transmitDelay = 15000;
 
