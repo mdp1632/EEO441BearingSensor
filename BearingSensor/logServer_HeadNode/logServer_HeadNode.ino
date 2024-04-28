@@ -1,6 +1,6 @@
 //************************************************************
-// this *was* a simple example that uses the painlessMesh library to 
-// setup a single node (this node) as a logging node
+// Log Server/Head Node for Bearing Defect Detector Network (EEO441)
+// Based on PainlessMesh logServer example sketch
 //************************************************************
 #include "painlessMesh.h"
 

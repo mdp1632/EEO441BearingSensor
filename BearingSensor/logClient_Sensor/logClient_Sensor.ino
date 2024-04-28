@@ -1,6 +1,7 @@
 //************************************************************
-// this *was* a simple example that uses the painlessMesh library to 
-// setup a node that logs to a central logging node
+// Log Client/Sensor Node for Bearing Defect Detector Network (EEO441)
+// Based on PainlessMesh logClient example
+// FFT analysis code based on arduinoFFT example
 //************************************************************
 #include "painlessMesh.h"
 #include "arduinoFFT.h" 
