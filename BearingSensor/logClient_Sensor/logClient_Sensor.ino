@@ -8,8 +8,6 @@
 
 #define   MESH_PREFIX       "bearingMesh"    // "SSID"
 #define   MESH_PASSWORD     "railwaySolutions"     // "PWD"
-// #define   MESH_PREFIX     "bearingSensor"
-// #define   MESH_PASSWORD   "somethingSneaky"
 #define   MESH_PORT         5555
 #define   WIFI_CHANNEL      6
 
@@ -21,7 +19,7 @@
 
 // Initialize Bearing Variables
 int       carNum = 0;               // Number in consist/Road Number/Serial Number (TBD)
-String    carLocation = "BR";       // AL, AR, BL, BR
+String    carLocation = "AL";       // AL, AR, BL, BR
 String    bearingStatus = "Normal";
 boolean   vibrationsSafe = true;
 
