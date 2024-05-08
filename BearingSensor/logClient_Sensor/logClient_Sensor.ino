@@ -6,7 +6,7 @@
 #include "painlessMesh.h"
 #include "arduinoFFT.h" 
 
-#define   MESH_PREFIX       "bearingMesh"    // "SSID"
+#define   MESH_PREFIX       "bearingMesh"          // "SSID"
 #define   MESH_PASSWORD     "railwaySolutions"     // "PWD"
 #define   MESH_PORT         5555
 #define   WIFI_CHANNEL      6
@@ -19,7 +19,7 @@
 
 // Initialize Bearing Variables
 int       carNum = 0;               // Number in consist/Road Number/Serial Number (TBD)
-String    carLocation = "AL";       // AL, AR, BL, BR
+String    carLocation = "BR";       // AL, AR, BL, BR
 String    bearingStatus = "Normal";
 boolean   vibrationsSafe = true;
 
@@ -356,7 +356,7 @@ boolean vibrationsUnsafe(){
 
 boolean vibrationsUnsafePeriodic(){
 	int unsafeVibeCount = 0;
-	unsigned long recordDelay = 3000L;  // Time to wait before recording another set of samples
+	unsigned long recordDelay = 3000L;    // Time to wait before recording another set of samples
 	unsigned long unsafeVibeStickyTime = (unsigned long) wakeUpTime;  // Time to "remember" last confirmed unsafe vibration event
 	// Remembering the unsafe event for the length of time before wake-up helps avoid failed reporting of unsafe vibrations
                                           // currentMilliseconds time is updated in main loop
