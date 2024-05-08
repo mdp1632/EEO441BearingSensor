@@ -107,11 +107,6 @@ void loop() {
   if(statusResetButton()){
     warning = false;
   }
-
-  // if(digitalRead(WARNING_RST_PIN)){
-  //   warning = false;
-  // }
-
   
 }
 
