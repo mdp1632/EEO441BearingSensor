@@ -211,7 +211,7 @@ void loop() {
     }
     // Just keep scanning, just keep scanning, scanning, scanning...
     if(true){ // Extra if statement for ease of testing
-      if(mesh.getNodeList().size()<2){  // (wait until at least 3 nodes are seen)
+      if(mesh.getNodeList().size()<3){  // (wait until at least 3 nodes are seen)
         lastUpdateTime = nodeTime_ms(); // Reset time if not enough other nodes (other than server) are detected
       }
     }
